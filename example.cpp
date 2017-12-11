@@ -36,7 +36,7 @@ int main(void)
 		{
 			repl.ins_char(buf[i]);
 		}
-		repl.draw();
+		//repl.draw();
 	}
 	return 0;
 }
