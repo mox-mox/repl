@@ -25,18 +25,23 @@ int main(void)
 	std::cout<<"Repl!"<<std::endl;
 
 	Repl repl;
-	repl.draw();
+	//repl.draw();
 
 	std::array<char, 5> buf;
 	while(true)
 	{
 		if(!kbhit()) continue;
 		int n = read(STDIN_FILENO, buf.data(), buf.max_size());
-		for(int i=0; i<n; i++)
+		if(repl.insert(buf.data(), n))
 		{
-			repl.ins_char(buf[i]);
+			std::cout<<std::endl;
+			for(std::string& line : repl.get_accepted_lines())
+			{
+				std::cout<<"Got line "<<line<<std::endl;
+			}
+			std::cout<<std::endl;
+			repl.get_accepted_lines().clear();
 		}
-		//repl.draw();
 	}
 	return 0;
 }
