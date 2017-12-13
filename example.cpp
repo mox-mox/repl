@@ -1,5 +1,4 @@
 #include "repl.hpp"
-#include <array>
 
 //{{{
 int kbhit (void) 
@@ -25,7 +24,6 @@ int main(void)
 	std::cout<<"Repl!"<<std::endl;
 
 	Repl repl;
-	//repl.draw();
 
 	std::array<char, 5> buf;
 	while(true)
