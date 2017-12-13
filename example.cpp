@@ -24,6 +24,7 @@ int main(void)
 	std::cout<<"Repl!"<<std::endl;
 
 	Repl repl;
+	repl.default_mappings();
 
 	std::array<char, 5> buf;
 	while(true)
