@@ -11,13 +11,13 @@ Repl::Repl(const std::string& prompt, milliseconds escape_sequence_timeout) :
 	history(),
 	mode(Mode::INSERT)
 {
-	change_terminal_mode(1);
-	draw();
+	//change_terminal_mode(1);
+	//draw();
 }
 
 Repl::~Repl(void)
 {
-	change_terminal_mode(0);
+	//change_terminal_mode(0);
 }
 //}}}
 
@@ -42,6 +42,10 @@ int Repl::insert(char buf[], std::size_t len)
 	for(std::size_t i=0; i<len; i++)
 	{
 		//std::cout<<int(buf[i])<<std::endl;
+		if(buf[i] == EOT) // Received <C-D>
+		{
+			return -1;
+		}
 
 		//{{{
 		if(mode != INSERT_ESCAPED && mode != NORMAL_ESCAPED) // If we are not in an escape sequence
@@ -214,7 +218,9 @@ void Repl::default_mappings(void)
 	// mappings for insert mode
 	map(INSERT, ESC, "changemode_normal");
 	map(INSERT, DEL, "backspace");
-	map(INSERT, '\n', "accept");
+	map(INSERT, '\r', "accept");
+	map(INSERT, ETX, "kill_line");
+
 	// mappings for normal mode
 	map(NORMAL, 'I', "changemode_insert_begin");
 	map(NORMAL, 'i', "changemode_insert");
@@ -222,7 +228,8 @@ void Repl::default_mappings(void)
 	map(NORMAL, 'A', "changemode_append_end");
 	map(NORMAL, 'x', "delete_char");
 	map(NORMAL, 'X', "backspace");
-	map(NORMAL, '\n', "accept");
+	map(NORMAL, '\r', "accept");
+	map(NORMAL, ETX, "kill_line");
 
 	map(NORMAL, '0', "move_cursor_begin");
 	map(NORMAL, 'b', "move_cursor_word_begin");
@@ -266,3 +273,4 @@ void Repl::change_terminal_mode(int dir)
 	}
 }
 //}}}
+

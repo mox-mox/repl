@@ -1,5 +1,5 @@
 #include <iostream>
-#include <termios.h> 
+#include <termios.h>
 #include <unistd.h>
 #include <map>
 #include <functional>
@@ -12,6 +12,8 @@
 
 #define ESC '\33'
 #define DEL '\177'
+#define ETX '\03'
+#define EOT '\04'
 
 class Repl
 {
@@ -164,7 +166,6 @@ class Repl
 	//}}}
 	//}}}
 
-	void change_terminal_mode(int dir);
 
 	//{{{ On keypress functions
 
@@ -198,10 +199,11 @@ class Repl
 		{ "delete_char",              [this](char  ){ if(line.length()) line.erase(curpos,1); return false; }},
 		{ "backspace",                [this](char  ){ if(line.length()) line.erase(--curpos,1); return false; }},
 		//}}}
-		//{{{ Accept line
+		//{{{ Accept/kill line
 
 		{ "accept",                   [this](char  ){ curpos=0; history.push_back(line); accepted_lines.push_back(line); line.clear(); return true; }},
 		{ "accept_no_add_history",    [this](char  ){ curpos=0; accepted_lines.push_back(line); line.clear(); return true; }},
+		{ "kill_line",                [this](char  ){ curpos=0; line.clear(); mode=INSERT; return true; }},
 		//}}}
 		//{{{ Complete
 
@@ -224,9 +226,10 @@ class Repl
 	void insert_key(Key key);
 	bool insert_key(std::string key);
 
-	void draw(void);
-
 	public:
+	// Set the terminal to unbuffered mode on begin, reset to buffered on end. With libuv use libuv's means instead;
+	void change_terminal_mode(int dir);
+	void draw(void);
 
 	void map(Mode mode, Key key_combo, std::string action);
 	void map(Mode mode, std::string key_combo, std::string action);
