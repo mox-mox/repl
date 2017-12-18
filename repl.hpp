@@ -14,6 +14,7 @@
 #define DEL '\177'
 #define ETX '\03'
 #define EOT '\04'
+#define KILL_PILL "kill_pill"
 
 class Repl
 {
@@ -174,49 +175,50 @@ class Repl
 	using action_map = std::map<std::string, on_keypress_function>;
 
 	// All the actions a key press can trigger. Yes, this is one huge std::map of lambdas. C++ does not offer reflection and this way there is only one definition.
-	std::map<std::string, on_keypress_function> actions = { // TODO: Replace with normal functions when reflection becomes available in C++
+	action_map all_actions = { // TODO: Replace with normal functions when reflection becomes available in C++
 		//{{{ Cursor movement
 
-		{ "move_cursor_begin",        [this](char  ){ curpos=0; return false; }},
-		{ "move_cursor_left",         [this](char  ){ curpos--; return false; }},
-		{ "move_cursor_right",        [this](char  ){ curpos++; return false; }},
-		{ "move_cursor_end",          [this](char  ){ curpos=line.length(); return false; }},
-		{ "move_cursor_word_begin",   [this](char  ){ for(; curpos&&line[curpos]!=' '; --curpos); return false; }}, // TODO
-		{ "move_cursor_word_end",     [this](char  ){ for(; curpos<static_cast<int>(line.length())&&line[curpos]!=' '; ++curpos); return false; }}, // TODO
-		{ "move_cursor_word_next",    [this](char  ){ for(; curpos<static_cast<int>(line.length())&&line[curpos]!=' '; ++curpos); return false; }}, // TODO
+		{ "move_cursor_begin",        [this](Key  ){ curpos=0; return false; }},
+		{ "move_cursor_left",         [this](Key  ){ curpos--; return false; }},
+		{ "move_cursor_right",        [this](Key  ){ curpos++; return false; }},
+		{ "move_cursor_end",          [this](Key  ){ curpos=line.length(); return false; }},
+		{ "move_cursor_word_begin",   [this](Key  ){ for(; curpos&&line[curpos]!=' '; --curpos); return false; }}, // TODO
+		{ "move_cursor_word_end",     [this](Key  ){ for(; curpos<static_cast<int>(line.length())&&line[curpos]!=' '; ++curpos); return false; }}, // TODO
+		{ "move_cursor_word_next",    [this](Key  ){ for(; curpos<static_cast<int>(line.length())&&line[curpos]!=' '; ++curpos); return false; }}, // TODO
 		//}}}
 		//{{{ Mode change
 
-		{ "changemode_insert_begin",  [this](char  ){ mode=INSERT; curpos=0; return false; }}, // TODO: Check
-		{ "changemode_insert",        [this](char  ){ mode=INSERT; return false; }},
-		{ "changemode_append",        [this](char  ){ mode=INSERT; curpos++; return false; }}, // TODO: Check
-		{ "changemode_append_end",    [this](char  ){ mode=INSERT; curpos=line.length(); return false; }}, // TODO: Check
-		{ "changemode_normal",        [this](char  ){ mode=NORMAL; curpos--; return false; }},
+		{ "changemode_insert_begin",  [this](Key  ){ mode=INSERT; curpos=0; return false; }}, // TODO: Check
+		{ "changemode_insert",        [this](Key  ){ mode=INSERT; return false; }},
+		{ "changemode_append",        [this](Key  ){ mode=INSERT; curpos++; return false; }}, // TODO: Check
+		{ "changemode_append_end",    [this](Key  ){ mode=INSERT; curpos=line.length(); return false; }}, // TODO: Check
+		{ "changemode_normal",        [this](Key  ){ mode=NORMAL; curpos--; return false; }},
 		//}}}
 		//{{{ Insert/delete character
  
-		{ "add_char",                 [this](char c){ line.insert(curpos,1,c); curpos++; return false; }},
-		{ "delete_char",              [this](char  ){ if(line.length()) line.erase(curpos,1); return false; }},
-		{ "backspace",                [this](char  ){ if(line.length()) line.erase(--curpos,1); return false; }},
+		{ "add_char",                 [this](Key c){ line.insert(curpos,1,c); curpos++; return false; }},
+		{ "delete_char",              [this](Key  ){ if(line.length()) line.erase(curpos,1); return false; }},
+		{ "backspace",                [this](Key  ){ if(line.length()) line.erase(--curpos,1); return false; }},
 		//}}}
 		//{{{ Accept/kill line
 
-		{ "accept",                   [this](char  ){ curpos=0; history.push_back(line); accepted_lines.push_back(line); line.clear(); return true; }},
-		{ "accept_no_add_history",    [this](char  ){ curpos=0; accepted_lines.push_back(line); line.clear(); return true; }},
-		{ "kill_line",                [this](char  ){ curpos=0; line.clear(); mode=INSERT; return true; }},
+		{ "accept",                   [this](Key  ){ curpos=0; history.push_back(line); accepted_lines.push_back(line); line.clear(); return true; }},
+		{ "accept_no_add_history",    [this](Key  ){ curpos=0; accepted_lines.push_back(line); line.clear(); return true; }},
+		{ "kill_line",                [this](Key  ){ curpos=0; line.clear(); mode=INSERT; return true; }},
+		{ "kill_repl",                [this](Key  ){ accepted_lines.push_back(KILL_PILL); return true; }},
 		//}}}
 		//{{{ Complete
 
-		{ "complete_single_word",     [this](char  ){ if(word_completer)   std::invoke(*word_completer,      line, curpos); return false; }},
-		{ "complete_multi_word",      [this](char  ){ if(multi_completer)  std::invoke(*multi_completer,     line, curpos); return false; }},
-		{ "complete_history",         [this](char  ){ if(hist_completer)   std::invoke(*hist_completer,history,line,curpos); return false;}},
+		{ "complete_single_word",     [this](Key  ){ if(word_completer)   std::invoke(*word_completer,      line, curpos); return false; }},
+		{ "complete_multi_word",      [this](Key  ){ if(multi_completer)  std::invoke(*multi_completer,     line, curpos); return false; }},
+		{ "complete_history",         [this](Key  ){ if(hist_completer)   std::invoke(*hist_completer,history,line,curpos); return false;}},
 		//}}}
 		//{{{ History search
 
-		{ "search_global_hist_fwd",   [this](char  ){ if(global_hist_fwd)  std::invoke(*global_hist_fwd,  history,line,curpos); return false; }},
-		{ "search_global_hist_bwd",   [this](char  ){ if(global_hist_fwd)  std::invoke(*global_hist_fwd,  history,line,curpos); return false; }},
-		{ "search_matching_hist_fwd", [this](char  ){ if(matching_hist_fwd)std::invoke(*matching_hist_fwd,history,line,curpos); return false; }},
-		{ "search_matching_hist_bwd", [this](char  ){ if(matching_hist_bwd)std::invoke(*matching_hist_bwd,history,line,curpos); return false; }},
+		{ "search_global_hist_fwd",   [this](Key  ){ if(global_hist_fwd)  std::invoke(*global_hist_fwd,  history,line,curpos); return false; }},
+		{ "search_global_hist_bwd",   [this](Key  ){ if(global_hist_fwd)  std::invoke(*global_hist_fwd,  history,line,curpos); return false; }},
+		{ "search_matching_hist_fwd", [this](Key  ){ if(matching_hist_fwd)std::invoke(*matching_hist_fwd,history,line,curpos); return false; }},
+		{ "search_matching_hist_bwd", [this](Key  ){ if(matching_hist_bwd)std::invoke(*matching_hist_bwd,history,line,curpos); return false; }},
 		//}}}
 	};
 
@@ -236,9 +238,7 @@ class Repl
 
 	void default_mappings(void);
 
-	int insert(char buf[], std::size_t len);
-
-	std::vector<std::string>& get_accepted_lines(void);
+	std::vector<std::string> insert(char buf[], std::size_t len);
 
 	Repl(const std::string& prompt = "edit > ", milliseconds escape_sequence_timeout = milliseconds(100));
 	~Repl(void);

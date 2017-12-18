@@ -35,18 +35,18 @@ Repl::~Repl(void)
 // and should be treated as such. If there was no follow-up input, it will have been a literal ESC pressed by the user.
 // Option 2) Look at multiple keys at once: If the terminal is configured to send keys immediately, we should normally only receive single keys, but if we receive an escape sequence, we will receive multiple keys at once and so should be able to just check if the next key is '['.
 
-int Repl::insert(char buf[], std::size_t len)
+std::vector<std::string> Repl::insert(char buf[], std::size_t len)
 {
 	static std::string escape_sequence_buffer;
 	steady_clock::time_point sequence_start;
+
+	//for(std::size_t i=0; i<len; i++)
+	//{
+	//	std::cout<<int(buf[i])<<std::endl;
+	//}
+
 	for(std::size_t i=0; i<len; i++)
 	{
-		//std::cout<<int(buf[i])<<std::endl;
-		if(buf[i] == EOT) // Received <C-D>
-		{
-			return -1;
-		}
-
 		//{{{
 		if(mode != INSERT_ESCAPED && mode != NORMAL_ESCAPED) // If we are not in an escape sequence
 		{
@@ -126,8 +126,10 @@ int Repl::insert(char buf[], std::size_t len)
 		}
 		//}}}
 	}
-	draw();
-	return accepted_lines.size();
+
+	auto accepted = accepted_lines;
+	accepted_lines.clear();
+	return accepted;
 }
 //}}}
 
@@ -140,7 +142,7 @@ void Repl::insert_key(Key key)
 }
 bool Repl::insert_key(std::string key)
 {
-	static on_keypress_function* add_char=&actions.find("add_char")->second;
+	static on_keypress_function* add_char=&all_actions.find("add_char")->second;
 
 	// If there is a mapping, execute the mapped function...
 	if(auto fun = mappings[mode].find(key); fun != mappings[mode].end())
@@ -192,7 +194,7 @@ void Repl::map(Mode mode, std::string key_combo, std::string action)
 		key_combo.erase(0, 2);
 		key_combo[0] = ESC;
 	}
-	if(auto fun = actions.find(action); fun != actions.end())
+	if(auto fun = all_actions.find(action); fun != all_actions.end())
 	{
 		mappings[mode][key_combo] = fun->second;
 	}
@@ -218,8 +220,10 @@ void Repl::default_mappings(void)
 	// mappings for insert mode
 	map(INSERT, ESC, "changemode_normal");
 	map(INSERT, DEL, "backspace");
+	map(INSERT, '\n', "accept");
 	map(INSERT, '\r', "accept");
 	map(INSERT, ETX, "kill_line");
+	map(INSERT, EOT, "kill_repl");
 
 	// mappings for normal mode
 	map(NORMAL, 'I', "changemode_insert_begin");
@@ -228,8 +232,10 @@ void Repl::default_mappings(void)
 	map(NORMAL, 'A', "changemode_append_end");
 	map(NORMAL, 'x', "delete_char");
 	map(NORMAL, 'X', "backspace");
+	map(NORMAL, '\n', "accept");
 	map(NORMAL, '\r', "accept");
 	map(NORMAL, ETX, "kill_line");
+	map(NORMAL, EOT, "kill_repl");
 
 	map(NORMAL, '0', "move_cursor_begin");
 	map(NORMAL, 'b', "move_cursor_word_begin");
@@ -238,14 +244,6 @@ void Repl::default_mappings(void)
 	map(NORMAL, 'e', "move_cursor_word_end");
 	map(NORMAL, 'w', "move_cursor_word_next");
 	map(NORMAL, '$', "move_cursor_end");
-}
-//}}}
-
-
-//{{{
-std::vector<std::string>& Repl::get_accepted_lines(void)
-{
-	return accepted_lines;
 }
 //}}}
 

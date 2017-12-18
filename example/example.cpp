@@ -25,22 +25,22 @@ int main(void)
 
 	Repl repl;
 	repl.default_mappings();
+	repl.change_terminal_mode(1);
+	repl.draw();
 
 	std::array<char, 5> buf;
 	while(true)
 	{
 		if(!kbhit()) continue;
 		int n = read(STDIN_FILENO, buf.data(), buf.max_size());
-		if(repl.insert(buf.data(), n))
+		for(std::string& line : repl.insert(buf.data(), n))
 		{
-			std::cout<<std::endl;
-			for(std::string& line : repl.get_accepted_lines())
-			{
-				std::cout<<"Got line "<<line<<std::endl;
-			}
-			std::cout<<std::endl;
-			repl.get_accepted_lines().clear();
+			if(line == KILL_PILL) goto finish;
+			std::cout<<"\nGot line "<<line<<std::endl;
 		}
+		repl.draw();
 	}
+finish:
+	repl.change_terminal_mode(0);
 	return 0;
 }
