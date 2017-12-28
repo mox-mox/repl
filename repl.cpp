@@ -1,10 +1,17 @@
 #include "repl.hpp"
+//#include <stropts.h>
+//#include <fcntl.h>
+//#include <cctype>
+//#include <memory>
+///#include <optional>
 
 
 //{{{ Constructors
 
-Repl::Repl(const std::string& prompt, milliseconds escape_sequence_timeout) :
+Repl::Repl(fs::path histfile, const std::string& prompt, milliseconds escape_sequence_timeout, bool set_terminal_mode) :
 	escape_sequence_timeout(escape_sequence_timeout),
+	set_terminal_mode(set_terminal_mode),
+	histfile(histfile),
 	prompt(prompt),
 	curpos(*this,0),
 	accepted_lines(),
@@ -12,13 +19,21 @@ Repl::Repl(const std::string& prompt, milliseconds escape_sequence_timeout) :
 	hist_idx(0),
 	mode(Mode::INSERT)
 {
-	//change_terminal_mode(1);
-	//draw();
+	if(histfile != "")
+	{
+		std::cout<<"Loading history"<<std::endl;
+	}
+
+
+
+
+
+	if(set_terminal_mode) change_terminal_mode(1);
 }
 
 Repl::~Repl(void)
 {
-	//change_terminal_mode(0);
+	if(set_terminal_mode) change_terminal_mode(0);
 }
 //}}}
 

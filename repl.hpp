@@ -4,11 +4,8 @@
 #include <map>
 #include <functional>
 #include <chrono>
-//#include <stropts.h>
-//#include <fcntl.h>
-//#include <cctype>
-//#include <memory>
-///#include <optional>
+#include <experimental/filesystem>
+namespace fs = std::experimental::filesystem;
 
 #define ESC '\33'
 #define DEL '\177'
@@ -18,10 +15,13 @@
 
 class Repl
 {
-	//{{{ Internal state
 	using milliseconds = std::chrono::duration<int64_t, std::milli>;
 	using steady_clock = std::chrono::steady_clock;
+
+	//{{{ Internal state
 	milliseconds escape_sequence_timeout;
+	bool set_terminal_mode;
+	fs::path histfile;
 
 	std::string prompt;
 	//{{{
@@ -250,8 +250,16 @@ class Repl
 	bool insert_key(std::string key);
 
 	public:
-	// Set the terminal to unbuffered mode on begin, reset to buffered on end. With libuv use libuv's means instead;
-	void change_terminal_mode(int dir);
+	//{{{
+
+	std::optional<std::function<void(std::string,int)>> word_completer;                                     //         line, cursor position
+	std::optional<std::function<void(std::string,int)>> multi_completer;                                    //         line, cursor position
+	std::optional<std::function<void(const std::vector<std::string>&,std::string&,int)>> hist_completer;    //History, line, cursor position
+
+	std::optional<std::function<void(const std::vector<std::string>&,std::string&,int)>> matching_hist_fwd; //History, line, cursor position
+	std::optional<std::function<void(const std::vector<std::string>&,std::string&,int)>> matching_hist_bwd; //History, line, cursor position
+	//}}}
+	void change_terminal_mode(int dir); // Set the terminal to unbuffered mode on begin, reset to buffered on end. With libuv use libuv's means instead;
 	void draw(void);
 
 	void map(Mode mode, Key key_combo, std::string action);
@@ -261,19 +269,6 @@ class Repl
 
 	std::vector<std::string> insert(char buf[], std::size_t len);
 
-	Repl(const std::string& prompt = "edit > ", milliseconds escape_sequence_timeout = milliseconds(100));
+	Repl(fs::path histfile = "", const std::string& prompt = "edit > ", milliseconds escape_sequence_timeout = milliseconds(100), bool set_terminal_mode = false);
 	~Repl(void);
-
-	//{{{
-	//std::optional<std::function<void(bool)>> on_line_accepted;                                              // accepted
-
-	std::optional<std::function<void(std::string,int)>> word_completer;                                     //         line, cursor position
-	std::optional<std::function<void(std::string,int)>> multi_completer;                                    //         line, cursor position
-	std::optional<std::function<void(const std::vector<std::string>&,std::string&,int)>> hist_completer;    //History, line, cursor position
-
-	std::optional<std::function<void(const std::vector<std::string>&,std::string&,int)>> global_hist_fwd;   //History, line, cursor position
-	std::optional<std::function<void(const std::vector<std::string>&,std::string&,int)>> global_hist_bwd;   //History, line, cursor position
-	std::optional<std::function<void(const std::vector<std::string>&,std::string&,int)>> matching_hist_fwd; //History, line, cursor position
-	std::optional<std::function<void(const std::vector<std::string>&,std::string&,int)>> matching_hist_bwd; //History, line, cursor position
-	//}}}
 };
