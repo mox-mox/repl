@@ -39,7 +39,7 @@ class Repl
 		}
 		//}}}
 		public:
-		//{{{
+		//{{{ Modifiers
 
 		Curpos(const Repl& repl, int position=0) : repl(repl), position(position)
 		{
@@ -148,13 +148,7 @@ class Repl
 
 	std::vector<std::string> accepted_lines;
 	std::vector<std::string> history;
-	std::optional<std::function<void(std::string,int)>> word_completer;
-	std::optional<std::function<void(std::string,int)>> multi_completer;
-	std::optional<std::function<void(std::vector<std::string>,std::string,int)>> hist_completer;
-	std::optional<std::function<void(std::vector<std::string>,std::string,int)>> global_hist_fwd;
-	std::optional<std::function<void(std::vector<std::string>,std::string,int)>> global_hist_bwd;
-	std::optional<std::function<void(std::vector<std::string>,std::string,int)>> matching_hist_fwd;
-	std::optional<std::function<void(std::vector<std::string>,std::string,int)>> matching_hist_bwd;
+	std::size_t history_idx;
 
 	//{{{
 	enum Mode
@@ -166,7 +160,6 @@ class Repl
 	} mode;
 	//}}}
 	//}}}
-
 
 	//{{{ On keypress functions
 
@@ -215,8 +208,17 @@ class Repl
 		//}}}
 		//{{{ History search
 
-		{ "search_global_hist_fwd",   [this](Key  ){ if(global_hist_fwd)  std::invoke(*global_hist_fwd,  history,line,curpos); return false; }},
-		{ "search_global_hist_bwd",   [this](Key  ){ if(global_hist_fwd)  std::invoke(*global_hist_fwd,  history,line,curpos); return false; }},
+		//{ "search_global_hist_fwd",   [this](Key  ){ if(global_hist_fwd)  std::invoke(*global_hist_fwd,  history,line,curpos); return false; }},
+		//{ "search_global_hist_bwd",   [this](Key  ){ if(global_hist_bwd)  std::invoke(*global_hist_bwd,  history,line,curpos); return false; }},
+		
+		{ "search_global_hist_fwd",   [this](Key  ){ 
+				//history_idx = history[history_idx]==line ? history_idx+1 : 0; line=history[history_idx]; curpos = line.length();
+				history_idx = history[history_idx]==line ? history_idx-1 : history.size()-1; line=history[history_idx]; curpos = line.length();
+				return false; }},
+		{ "search_global_hist_bwd",   [this](Key  ){ 
+				//history_idx = history[history_idx]==line ? history_idx-1 : history.size()-1; line=history[history_idx]; curpos = line.length();
+				history_idx = history[history_idx]==line ? history_idx+1 : 0; line=history[history_idx]; curpos = line.length();
+				return false; }},
 		{ "search_matching_hist_fwd", [this](Key  ){ if(matching_hist_fwd)std::invoke(*matching_hist_fwd,history,line,curpos); return false; }},
 		{ "search_matching_hist_bwd", [this](Key  ){ if(matching_hist_bwd)std::invoke(*matching_hist_bwd,history,line,curpos); return false; }},
 		//}}}
@@ -242,4 +244,17 @@ class Repl
 
 	Repl(const std::string& prompt = "edit > ", milliseconds escape_sequence_timeout = milliseconds(100));
 	~Repl(void);
+
+	//{{{
+	//std::optional<std::function<void(bool)>> on_line_accepted;                                              // accepted
+
+	std::optional<std::function<void(std::string,int)>> word_completer;                                     //         line, cursor position
+	std::optional<std::function<void(std::string,int)>> multi_completer;                                    //         line, cursor position
+	std::optional<std::function<void(const std::vector<std::string>&,std::string&,int)>> hist_completer;    //History, line, cursor position
+
+	std::optional<std::function<void(const std::vector<std::string>&,std::string&,int)>> global_hist_fwd;   //History, line, cursor position
+	std::optional<std::function<void(const std::vector<std::string>&,std::string&,int)>> global_hist_bwd;   //History, line, cursor position
+	std::optional<std::function<void(const std::vector<std::string>&,std::string&,int)>> matching_hist_fwd; //History, line, cursor position
+	std::optional<std::function<void(const std::vector<std::string>&,std::string&,int)>> matching_hist_bwd; //History, line, cursor position
+	//}}}
 };

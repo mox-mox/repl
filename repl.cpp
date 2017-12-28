@@ -1,5 +1,6 @@
 #include "repl.hpp"
 
+
 //{{{ Constructors
 
 Repl::Repl(const std::string& prompt, milliseconds escape_sequence_timeout) :
@@ -9,6 +10,7 @@ Repl::Repl(const std::string& prompt, milliseconds escape_sequence_timeout) :
 	curpos(*this,0),
 	accepted_lines(),
 	history(),
+	history_idx(0),
 	mode(Mode::INSERT)
 {
 	//change_terminal_mode(1);
@@ -244,6 +246,9 @@ void Repl::default_mappings(void)
 	map(NORMAL, 'e', "move_cursor_word_end");
 	map(NORMAL, 'w', "move_cursor_word_next");
 	map(NORMAL, '$', "move_cursor_end");
+
+	map(NORMAL, 'k', "search_global_hist_fwd");
+	map(NORMAL, 'j', "search_global_hist_bwd");
 }
 //}}}
 
