@@ -6,11 +6,10 @@
 Repl::Repl(const std::string& prompt, milliseconds escape_sequence_timeout) :
 	escape_sequence_timeout(escape_sequence_timeout),
 	prompt(prompt),
-	line(""),
 	curpos(*this,0),
 	accepted_lines(),
-	history(),
-	history_idx(0),
+	history({""}),
+	hist_idx(0),
 	mode(Mode::INSERT)
 {
 	//change_terminal_mode(1);
@@ -174,9 +173,9 @@ bool Repl::insert_key(std::string key)
 //{{{
 void Repl::draw(void)
 {
-	//std::cout<<std::endl<<static_cast<int>(curpos)<<std::endl;
+	//std::cout<<std::endl<<hist_idx<<"("<<history.size()<<"), "<<static_cast<int>(curpos)<<std::endl;
 	int cursor_position = 1+prompt.length() + static_cast<int>(curpos);
-	std::cout<<"\33[2K\r"<<prompt<<line;//<<std::flush;
+	std::cout<<"\33[2K\r"<<prompt<<history[hist_idx];//<<std::flush;
 	std::cout<<"\33["<<cursor_position<<"G"<<std::flush;
 }
 //}}}
@@ -249,6 +248,7 @@ void Repl::default_mappings(void)
 
 	map(NORMAL, 'k', "search_global_hist_fwd");
 	map(NORMAL, 'j', "search_global_hist_bwd");
+	map(NORMAL, 'p', "print_history");
 }
 //}}}
 

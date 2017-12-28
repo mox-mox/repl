@@ -24,7 +24,6 @@ class Repl
 	milliseconds escape_sequence_timeout;
 
 	std::string prompt;
-	std::string line;
 	//{{{
 	class Curpos
 	{
@@ -33,8 +32,8 @@ class Repl
 		//{{{
 		void check(void)
 		{
-			if((repl.mode==INSERT || repl.mode==INSERT_ESCAPED) && (static_cast<int>(repl.line.length()) <= position)) position = repl.line.length();
-			if((repl.mode==NORMAL || repl.mode==NORMAL_ESCAPED) && (static_cast<int>(repl.line.length()) <= position)) position = repl.line.length()-1;
+			if((repl.mode==INSERT || repl.mode==INSERT_ESCAPED) && (static_cast<int>(repl.history[repl.hist_idx].length()) <= position)) position = repl.history[repl.hist_idx].length();
+			if((repl.mode==NORMAL || repl.mode==NORMAL_ESCAPED) && (static_cast<int>(repl.history[repl.hist_idx].length()) <= position)) position = repl.history[repl.hist_idx].length()-1;
 			if(position <= 0) position=0;
 		}
 		//}}}
@@ -148,7 +147,7 @@ class Repl
 
 	std::vector<std::string> accepted_lines;
 	std::vector<std::string> history;
-	std::size_t history_idx;
+	std::size_t hist_idx;
 
 	//{{{
 	enum Mode
@@ -174,53 +173,73 @@ class Repl
 		{ "move_cursor_begin",        [this](Key  ){ curpos=0; return false; }},
 		{ "move_cursor_left",         [this](Key  ){ curpos--; return false; }},
 		{ "move_cursor_right",        [this](Key  ){ curpos++; return false; }},
-		{ "move_cursor_end",          [this](Key  ){ curpos=line.length(); return false; }},
-		{ "move_cursor_word_begin",   [this](Key  ){ for(; curpos&&line[curpos]!=' '; --curpos); return false; }}, // TODO
-		{ "move_cursor_word_end",     [this](Key  ){ for(; curpos<static_cast<int>(line.length())&&line[curpos]!=' '; ++curpos); return false; }}, // TODO
-		{ "move_cursor_word_next",    [this](Key  ){ for(; curpos<static_cast<int>(line.length())&&line[curpos]!=' '; ++curpos); return false; }}, // TODO
+		{ "move_cursor_end",          [this](Key  ){ curpos=history[hist_idx].length(); return false; }},
+		{ "move_cursor_word_begin",   [this](Key  ){ for(; curpos&&history[hist_idx][curpos]!=' '; --curpos); return false; }}, // TODO
+		{ "move_cursor_word_end",     [this](Key  ){ for(; curpos<static_cast<int>(history[hist_idx].length())&&history[hist_idx][curpos]!=' '; ++curpos); return false; }}, // TODO
+		{ "move_cursor_word_next",    [this](Key  ){ for(; curpos<static_cast<int>(history[hist_idx].length())&&history[hist_idx][curpos]!=' '; ++curpos); return false; }}, // TODO
 		//}}}
 		//{{{ Mode change
 
 		{ "changemode_insert_begin",  [this](Key  ){ mode=INSERT; curpos=0; return false; }}, // TODO: Check
 		{ "changemode_insert",        [this](Key  ){ mode=INSERT; return false; }},
 		{ "changemode_append",        [this](Key  ){ mode=INSERT; curpos++; return false; }}, // TODO: Check
-		{ "changemode_append_end",    [this](Key  ){ mode=INSERT; curpos=line.length(); return false; }}, // TODO: Check
+		{ "changemode_append_end",    [this](Key  ){ mode=INSERT; curpos=history[hist_idx].length(); return false; }}, // TODO: Check
 		{ "changemode_normal",        [this](Key  ){ mode=NORMAL; curpos--; return false; }},
 		//}}}
 		//{{{ Insert/delete character
  
-		{ "add_char",                 [this](Key c){ line.insert(curpos,1,c); curpos++; return false; }},
-		{ "delete_char",              [this](Key  ){ if(line.length()) line.erase(curpos,1); return false; }},
-		{ "backspace",                [this](Key  ){ if(line.length()) line.erase(--curpos,1); return false; }},
+		{ "add_char",                 [this](Key c){ history[hist_idx].insert(curpos,1,c); curpos++; return false; }},
+		{ "delete_char",              [this](Key  ){ if(history[hist_idx].length()) history[hist_idx].erase(curpos,1); return false; }},
+		{ "backspace",                [this](Key  ){ if(history[hist_idx].length()) history[hist_idx].erase(--curpos,1); return false; }},
 		//}}}
 		//{{{ Accept/kill line
 
-		{ "accept",                   [this](Key  ){ curpos=0; history.push_back(line); accepted_lines.push_back(line); line.clear(); return true; }},
-		{ "accept_no_add_history",    [this](Key  ){ curpos=0; accepted_lines.push_back(line); line.clear(); return true; }},
-		{ "kill_line",                [this](Key  ){ curpos=0; line.clear(); mode=INSERT; return true; }},
+		{ "accept",                   [this](Key  ){
+				curpos=0;
+				accepted_lines.push_back(history[hist_idx]);
+				if(hist_idx == history.size()-1) history.push_back("");
+				hist_idx = history.size()-1;
+				history[hist_idx].clear();
+				mode=INSERT;
+				return true;
+		}},
+		{ "accept_no_add_history",    [this](Key  ){
+				curpos=0;
+				accepted_lines.push_back(history[hist_idx]);
+				hist_idx = history.size()-1;
+				history[hist_idx].clear();
+				mode=INSERT;
+				return true;
+		}},
+		{ "kill_line",                [this](Key  ){
+				curpos=0;
+				hist_idx = history.size()-1;
+				history[hist_idx].clear();
+				mode=INSERT;
+				return true;
+		}},
 		{ "kill_repl",                [this](Key  ){ accepted_lines.push_back(KILL_PILL); return true; }},
 		//}}}
 		//{{{ Complete
 
-		{ "complete_single_word",     [this](Key  ){ if(word_completer)   std::invoke(*word_completer,      line, curpos); return false; }},
-		{ "complete_multi_word",      [this](Key  ){ if(multi_completer)  std::invoke(*multi_completer,     line, curpos); return false; }},
-		{ "complete_history",         [this](Key  ){ if(hist_completer)   std::invoke(*hist_completer,history,line,curpos); return false;}},
+		{ "complete_single_word",     [this](Key  ){ if(word_completer)   std::invoke(*word_completer,      history[hist_idx], curpos); return false; }},
+		{ "complete_multi_word",      [this](Key  ){ if(multi_completer)  std::invoke(*multi_completer,     history[hist_idx], curpos); return false; }},
+		{ "complete_history",         [this](Key  ){ if(hist_completer)   std::invoke(*hist_completer,history,history[hist_idx],curpos); return false;}},
 		//}}}
 		//{{{ History search
 
-		//{ "search_global_hist_fwd",   [this](Key  ){ if(global_hist_fwd)  std::invoke(*global_hist_fwd,  history,line,curpos); return false; }},
-		//{ "search_global_hist_bwd",   [this](Key  ){ if(global_hist_bwd)  std::invoke(*global_hist_bwd,  history,line,curpos); return false; }},
+		{ "print_history",            [this](Key  ){ std::cout<<'\n'; for(auto& s : history) std::cout<<'\t'<<s<<std::endl; return false;}},
 		
 		{ "search_global_hist_fwd",   [this](Key  ){ 
-				//history_idx = history[history_idx]==line ? history_idx+1 : 0; line=history[history_idx]; curpos = line.length();
-				history_idx = history[history_idx]==line ? history_idx-1 : history.size()-1; line=history[history_idx]; curpos = line.length();
+				hist_idx = (hist_idx > 0)                ? hist_idx-1 : hist_idx;
+				curpos=history[hist_idx].length();
 				return false; }},
 		{ "search_global_hist_bwd",   [this](Key  ){ 
-				//history_idx = history[history_idx]==line ? history_idx-1 : history.size()-1; line=history[history_idx]; curpos = line.length();
-				history_idx = history[history_idx]==line ? history_idx+1 : 0; line=history[history_idx]; curpos = line.length();
+				hist_idx = (hist_idx < history.size()-1) ? hist_idx+1 : hist_idx;
+				curpos=history[hist_idx].length();
 				return false; }},
-		{ "search_matching_hist_fwd", [this](Key  ){ if(matching_hist_fwd)std::invoke(*matching_hist_fwd,history,line,curpos); return false; }},
-		{ "search_matching_hist_bwd", [this](Key  ){ if(matching_hist_bwd)std::invoke(*matching_hist_bwd,history,line,curpos); return false; }},
+		{ "search_matching_hist_fwd", [this](Key  ){ if(matching_hist_fwd)std::invoke(*matching_hist_fwd,history,history[hist_idx],curpos); return false; }},
+		{ "search_matching_hist_bwd", [this](Key  ){ if(matching_hist_bwd)std::invoke(*matching_hist_bwd,history,history[hist_idx],curpos); return false; }},
 		//}}}
 	};
 
