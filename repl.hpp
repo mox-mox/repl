@@ -269,6 +269,6 @@ class Repl
 
 	std::vector<std::string> insert(char buf[], std::size_t len);
 
-	Repl(fs::path histfile = "", const std::string& prompt = "edit > ", milliseconds escape_sequence_timeout = milliseconds(100), bool set_terminal_mode = false);
+	Repl(fs::path histfile = "default", const std::string& prompt = "edit > ", milliseconds escape_sequence_timeout = milliseconds(100), bool set_terminal_mode = false);
 	~Repl(void);
 };

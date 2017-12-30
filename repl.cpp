@@ -1,9 +1,13 @@
 #include "repl.hpp"
+#include <fstream>
 //#include <stropts.h>
 //#include <fcntl.h>
 //#include <cctype>
 //#include <memory>
 ///#include <optional>
+
+
+
 
 
 //{{{ Constructors
@@ -15,14 +19,35 @@ Repl::Repl(fs::path histfile, const std::string& prompt, milliseconds escape_seq
 	prompt(prompt),
 	curpos(*this,0),
 	accepted_lines(),
-	history({""}),
+	history(),
 	hist_idx(0),
 	mode(Mode::INSERT)
 {
+	//{{{
 	if(histfile != "")
 	{
 		std::cout<<"Loading history"<<std::endl;
+
+		std::ifstream history_file(histfile);
+		if(history_file.is_open())
+		{
+			// Go to the first times line
+			std::string line;
+			while(!std::getline(history_file, line).eof())
+			{
+				history.push_back(line);
+			}
+		}
+		else
+		{
+			std::cerr<<"Could not open repl history file \""<<histfile<<"\". Continuing without history."<<std::endl;
+			histfile = "";
+		}
 	}
+	
+	history.push_back("");
+	hist_idx = history.size()-1;
+	//}}}
 
 
 
@@ -34,6 +59,22 @@ Repl::Repl(fs::path histfile, const std::string& prompt, milliseconds escape_seq
 Repl::~Repl(void)
 {
 	if(set_terminal_mode) change_terminal_mode(0);
+
+	//{{{
+	if(histfile != "")
+	{
+		std::ofstream history_file(histfile);
+		if(history_file.is_open())
+		{
+			for(std::string& line : history) if(line != "") history_file<<line<<std::endl;
+			// TODO: implement file size restriction
+		}
+		else
+		{
+			std::cerr<<"Could not open repl history file \""<<histfile<<"\". Continuing without history."<<std::endl;
+		}
+	}
+	//}}}
 }
 //}}}
 
